@@ -28,7 +28,7 @@ angular.module('adf', ['adf.provider', 'ui.bootstrap'])
   .value('adfTemplatePath', '../src/templates/')
   .value('rowTemplate', '<adf-dashboard-row row="row" adf-model="adfModel" collapsible="collapsible" edit-mode="editMode" ng-repeat="row in column.rows" />')
   .value('columnTemplate', '<adf-dashboard-column column="column" adf-model="adfModel" collapsible="collapsible" edit-mode="editMode" ng-repeat="column in row.columns" />')
-  .value('adfVersion', '0.8.0');
+  .value('adfVersion', '0.9.0-SNAPSHOT');
 
 /*
 * The MIT License
@@ -57,7 +57,7 @@ angular.module('adf', ['adf.provider', 'ui.bootstrap'])
 
 /* global angular */
 angular.module('adf')
-  .directive('adfDashboardColumn', function ($log, $compile, adfTemplatePath, rowTemplate, dashboard) {
+  .directive('adfDashboardColumn', ["$log", "$compile", "adfTemplatePath", "rowTemplate", "dashboard", function ($log, $compile, adfTemplatePath, rowTemplate, dashboard) {
     'use strict';
 
     /**
@@ -161,7 +161,7 @@ angular.module('adf')
       var el = $element[0];
       var sortable = Sortable.create(el, {
         group: 'widgets',
-        handle: '.glyphicon-move',
+        handle: '.adf-move',
         ghostClass: 'placeholder',
         animation: 150,
         onAdd: function(evt){
@@ -209,7 +209,7 @@ angular.module('adf')
         }
       }
     };
-  });
+  }]);
 
 /*
  * The MIT License
@@ -249,7 +249,7 @@ angular.module('adf')
  */
 
 angular.module('adf')
-  .directive('adfDashboard', function ($rootScope, $log, $modal, dashboard, adfTemplatePath) {
+  .directive('adfDashboard', ["$rootScope", "$log", "$modal", "dashboard", "adfTemplatePath", function ($rootScope, $log, $modal, dashboard, adfTemplatePath) {
     'use strict';
 
     function copyWidgets(source, target) {
@@ -338,6 +338,57 @@ angular.module('adf')
       return cfg;
     }
 
+    /**
+     * Find first widget column in model.
+     *
+     * @param dashboard model
+     */
+    function findFirstWidgetColumn(model){
+      var column = null;
+      if (!angular.isArray(model.rows)){
+        $log.error('model does not have any rows');
+        return null;
+      }
+      for (var i=0; i<model.rows.length; i++){
+        var row = model.rows[i];
+        if (angular.isArray(row.columns)){
+          for (var j=0; j<row.columns.length; j++){
+            var col = row.columns[j];
+            if (!col.rows){
+              column = col;
+              break;
+            }
+          }
+        }
+        if (column){
+          break;
+        }
+      }
+      return column;
+    }
+
+    /**
+     * Adds the widget to first column of the model.
+     *
+     * @param dashboard model
+     * @param widget to add to model
+     */
+    function addNewWidgetToModel(model, widget){
+      if (model){
+        var column = findFirstWidgetColumn(model);
+        if (column){
+          if (!column.widgets){
+            column.widgets = [];
+          }
+          column.widgets.unshift(widget);
+        } else {
+          $log.error('could not find first widget column');
+        }
+      } else {
+        $log.error('model is undefined');
+      }
+    }
+
     return {
       replace: true,
       restrict: 'EA',
@@ -350,7 +401,7 @@ angular.module('adf')
         adfModel: '=',
         adfWidgetFilter: '='
       },
-      controller: function($scope){
+      controller: ["$scope", function($scope){
         var model = {};
         var structure = {};
         var widgetFilter = {};
@@ -460,17 +511,18 @@ angular.module('adf')
               type: widget,
               config: createConfiguration(widget)
             };
-            addScope.model.rows[0].columns[0].widgets.unshift(w);
+            addNewWidgetToModel(addScope.model, w);
+            // close and destroy
             instance.close();
-
             addScope.$destroy();
           };
           addScope.closeDialog = function(){
+            // close and destroy
             instance.close();
             addScope.$destroy();
           };
         };
-      },
+      }],
       compile: function($element, $attrs){
         if (!angular.isDefined($attrs.editable)){
           $attrs.editable = true;
@@ -484,7 +536,7 @@ angular.module('adf')
       },
       templateUrl: adfTemplatePath + 'dashboard.html'
     };
-  });
+  }]);
 
 /*
  * The MIT License
@@ -728,7 +780,7 @@ angular.module('adf.provider', [])
 
 /* global angular */
 angular.module('adf')
-  .directive('adfDashboardRow', function ($compile, adfTemplatePath, columnTemplate) {
+  .directive('adfDashboardRow', ["$compile", "adfTemplatePath", "columnTemplate", function ($compile, adfTemplatePath, columnTemplate) {
     'use strict';
 
     return {
@@ -749,7 +801,7 @@ angular.module('adf')
         }
       }
     };
-  });
+  }]);
 
 /*
  * The MIT License
@@ -778,7 +830,7 @@ angular.module('adf')
 'use strict';
 
 angular.module('adf')
-  .directive('adfWidgetContent', function($log, $q, $sce, $http, $templateCache,
+  .directive('adfWidgetContent', ["$log", "$q", "$sce", "$http", "$templateCache", "$compile", "$controller", "$injector", "dashboard", function($log, $q, $sce, $http, $templateCache,
     $compile, $controller, $injector, dashboard) {
 
     function parseUrl(url){
@@ -909,7 +961,7 @@ angular.module('adf')
       }
     };
 
-  });
+  }]);
 
 /*
  * The MIT License
@@ -938,7 +990,7 @@ angular.module('adf')
 'use strict';
 
 angular.module('adf')
-  .directive('adfWidget', function($log, $modal, dashboard, adfTemplatePath) {
+  .directive('adfWidget', ["$log", "$modal", "dashboard", "adfTemplatePath", function($log, $modal, dashboard, adfTemplatePath) {
 
     function stringToBoolean(string){
       switch(angular.isDefined(string) ? string.toLowerCase() : null){
@@ -1062,7 +1114,7 @@ angular.module('adf')
       }
     };
 
-  });
+  }]);
 
 angular.module("adf").run(["$templateCache", function($templateCache) {$templateCache.put("../src/templates/dashboard-column.html","<div adf-id={{column.cid}} class=column ng-class=column.styleClass ng-model=column.widgets> <adf-widget ng-repeat=\"definition in column.widgets\" definition=definition column=column edit-mode=editMode collapsible=collapsible>  </adf-widget></div> ");
 $templateCache.put("../src/templates/dashboard-edit.html","<div class=modal-header> <button type=button class=close ng-click=closeDialog() aria-hidden=true>&times;</button> <h4 class=modal-title>Edit Dashboard</h4> </div> <div class=modal-body> <form role=form> <div class=form-group> <label for=dashboardTitle>Title</label> <input type=text class=form-control id=dashboardTitle ng-model=copy.title required> </div> <div class=form-group> <label>Structure</label> <div class=radio ng-repeat=\"(key, structure) in structures\"> <label> <input type=radio value={{key}} ng-model=model.structure ng-change=\"changeStructure(key, structure)\"> {{key}} </label> </div> </div> </form> </div> <div class=modal-footer> <button type=button class=\"btn btn-primary\" ng-click=closeDialog()>Close</button> </div> ");
