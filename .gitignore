@@ -1,5 +1,7 @@
 /nbproject/
 /node_modules/
 /build/
-/components/
-.tmp/
+/sample/components/
+/.tmp/
+/dist/docs/
+/dist/sample/
